@@ -253,10 +253,26 @@ impl Waiter {
         let mut philosopherids :Vec<usize> = self.data.keys().copied().collect();
         philosopherids.sort();
 
-        println!("\n{:>19}*** SUMMARY ***", "");
+        println!("\n{:>31}*** SUMMARY ***", "");
         for id in philosopherids {
             println!("Philosopher #{:0>3}: {}", id, self.data.get(&id).unwrap());
         }
+
+        println!("{:->77}", "");
+
+        let thoughts_data :Vec<usize> = self.data.iter().map(|x| x.1.thoughts).collect();
+        let meals_data :Vec<usize> = self.data.iter().map(|x| x.1.meals).collect();
+
+        let (thoughts_mean, thoughts_stddev) = calculate_mean_and_stddev(&thoughts_data);
+        let (meals_mean, meals_stddev) = calculate_mean_and_stddev(&meals_data);
+
+        let thoughts_cv = thoughts_stddev / thoughts_mean;
+        let meals_cv = meals_stddev / meals_mean;
+
+        println!("Mean:                     {:>15.4} thoughts,   {:>15.4} meals", thoughts_mean, meals_mean);
+        println!("Std. Deviation:           {:>15.4} thoughts,   {:>15.4} meals", thoughts_stddev, meals_stddev);
+        println!("Coefficient of Variance:  {:>15.4} (thoughts), {:>15.4} (meals)", thoughts_cv, meals_cv);
+
 
         std::process::exit(0);
     }
@@ -305,6 +321,39 @@ impl Waiter {
     }
 }
 
+fn calculate_mean_and_stddev(data :&Vec<usize>) -> (f64, f64)
+{
+    let mean = calculate_mean(data);
+    let stddev = calculate_stddev(data, &mean);
+
+    (mean, stddev)
+}
+
+fn calculate_mean(data :&Vec<usize>) -> f64
+{
+    let mut sum :usize = 0;
+
+    for &x in data {
+        sum += x;
+    }
+
+    (sum as f64) / (data.len() as f64)
+}
+
+fn calculate_stddev(data :&Vec<usize>, mean :&f64) -> f64
+{
+    let mut variance :f64 = 0.0;
+
+    for &x in data {
+        let var = (x as f64) - mean;
+        variance += var * var;
+    }
+
+    ( variance / (data.len() as f64) ).sqrt()
+}
+
+
+
 /// Program that simulates the Dining Philosophers Problem
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
@@ -331,9 +380,9 @@ struct Args {
 fn main() {
     let args = Arc::new(Args::parse());
 
-    println!("{:>15}========================", "");
-    println!("{:>15}  DINING PHILOSOPHERS!  ", "");
-    println!("{:>15}========================", "");
+    println!("{:>27}========================", "");
+    println!("{:>27}  DINING PHILOSOPHERS!  ", "");
+    println!("{:>27}========================", "");
 
     let mut waiter = Waiter::new(args.clone());
     let waiter_tx = waiter.bell.0.clone();
